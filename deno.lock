@@ -6,6 +6,7 @@
     "npm:leaflet@^1.9.4": "1.9.4",
     "npm:lint-staged@*": "15.2.10",
     "npm:murmur-32@1": "1.0.0",
+    "npm:seedrandom@^3.0.5": "3.0.5",
     "npm:vite@*": "5.4.8"
   },
   "npm": {
@@ -433,6 +434,9 @@
         "fsevents"
       ]
     },
+    "seedrandom@3.0.5": {
+      "integrity": "sha512-8OwmbklUNzwezjGInmZ+2clQmExQPvomqjL7LFqOYqtmuxRgQYqOD3mHaU+MvZn5FLUeVxVfQjwLZW/n/JFuqg=="
+    },
     "shebang-command@2.0.0": {
       "integrity": "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==",
       "dependencies": [
@@ -520,6 +524,13 @@
       "npm:geojson@0.5",
       "npm:leaflet@^1.9.4",
       "npm:murmur-32@1"
-    ]
+    ],
+    "packageJson": {
+      "dependencies": [
+        "npm:leaflet@^1.9.4",
+        "npm:murmur-32@1",
+        "npm:seedrandom@^3.0.5"
+      ]
+    }
   }
 }
