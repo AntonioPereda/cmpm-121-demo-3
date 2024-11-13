@@ -24,6 +24,8 @@ let degrees = 1e-4;
 let area_size = 6;
 let spawnrate = 0.25;
 
+const NullIsland = leaflet.latLng(0, 0);
+
 const Oakes_Class = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
 const map = leaflet.map('map', {
@@ -34,6 +36,14 @@ const map = leaflet.map('map', {
   zoomControl: false,
   scrollWheelZoom: false,
 });
+
+
+//Helper Functions
+function coordinateConversion(lat, long) {
+  const i = (NullIsland.lat + lat * degrees) * 15e+4;
+  const j =  (NullIsland.lng + long * degrees) * 15e+4;
+return  [Math.round(i), Math.round(j)];
+}
 
 //add details to the map
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -76,14 +86,14 @@ function spawnCache(i, j, c){
     [origin.lat + (i + 0.75) * degrees, origin.lng + (j + 0.75) * degrees],
   ]);
 
-
+  const cacheCoord = coordinateConversion(i, j);
   
   const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
 
   //cache popup
   let format = `
-  <div>This cache at "${i},${j}" contains <span id = "cacheCoins">${coins} </span> coins.</div>
+  <div>This cache at "${cacheCoord[0]}, ${cacheCoord[1]}" contains <span id = "cacheCoins">${coins} </span> coins.</div>
   <button id="take">Take</button>
   <button id="place">Deposit</button>
   `;
