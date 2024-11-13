@@ -28,23 +28,19 @@ const NullIsland = leaflet.latLng(0, 0);
 
 const Oakes_Class = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
+//player marker
+const player = leaflet.marker(Oakes_Class);
+player.bindTooltip("This is you");
+
+//make map
 const map = leaflet.map('map', {
-  center: Oakes_Class,
+  center: player.getLatLng(),
   zoom: zoom,
-  minZoom: zoom,
+  minZoom: zoom-100,
   maxZoom: zoom,
-  zoomControl: false,
-  scrollWheelZoom: false,
+  zoomControl: true,
+  scrollWheelZoom: true,
 });
-
-
-//Helper Functions
-function coordinateConversion(lat, long) {
-  const i = (NullIsland.lat + lat * degrees) * 15e+4;
-  const j =  (NullIsland.lng + long * degrees) * 15e+4;
-return  [Math.round(i), Math.round(j)];
-}
-
 //add details to the map
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: zoom,
@@ -52,16 +48,22 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
 
-//player marker
-const player = leaflet.marker(Oakes_Class);
-player.bindTooltip("This is you");
+//add player top map
 player.addTo(map);
+
+//Helper Functions
+function coordinateConversion(lat, long) {
+  const i = (NullIsland.lat + lat) * 15e+4;
+  const j =  (NullIsland.lng + long) * 15e+4;
+return  [Math.round(i), Math.round(j)];
+}
+
 
 //point display
 let points = 0;
 const pointPannel = document.querySelector<HTMLDivElement>("#pointPannel")!;
 pointPannel.style.fontSize = "50px";
-pointPannel.innerHTML = "0";
+pointPannel.innerHTML = "0 coins accumulated";
 
 
 //making the caches
@@ -77,13 +79,13 @@ function generateCache(i: number, j: number){
 
 //creates cache and details
 function spawnCache(i, j, c){
-  const origin = Oakes_Class;
+  const origin = NullIsland;
 
   let coins = Math.floor((luck([i,j].toString()) * 8 + 2));
 
   const bounds = leaflet.latLngBounds([
-    [origin.lat + i * degrees, origin.lng + j * degrees],
-    [origin.lat + (i + 0.75) * degrees, origin.lng + (j + 0.75) * degrees],
+    [(origin.lat + i) * degrees, (origin.lng + j) * degrees],
+    [(origin.lat + (i + 0.75)) * degrees, (origin.lng + (j + 0.75)) * degrees],
   ]);
 
   const cacheCoord = coordinateConversion(i, j);
@@ -136,11 +138,17 @@ for (let i = -area_size; i < area_size; i++) {
   for (let j = -area_size; j < area_size; j++) {
     // If location i,j is lucky enough, spawn a cache!
     if (luck([i, j].toString()) < spawnrate) {
-      generateCache(i, j);
+      let lat = player.getLatLng().lat + i;
+      let long = player.getLatLng().lng + j;
+      console.log(lat, " ", long, player.getLatLng(), "\n");
+      generateCache(lat, long);
     }
   }
 }
 
+//Set Center to a "player"
+//set origin to "player"
 
+console.log(player.getLatLng());
 
 
