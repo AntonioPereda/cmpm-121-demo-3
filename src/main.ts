@@ -22,25 +22,28 @@ const random = seedrandom(seed_key);
 let zoom = 19;
 let degrees = 1e-4;
 let area_size = 6;
-let spawnrate = 0.25;
+let spawnrate = 0.10;
 
-const NullIsland = leaflet.latLng(0, 0);
-
+//Oakes Marker
 const Oakes_Class = leaflet.latLng(36.98949379578401, -122.06277128548504);
+
 
 //player marker
 const player = leaflet.marker(Oakes_Class);
 player.bindTooltip("This is you");
 
-//make map
+//NullIsland
+const NullIsland = leaflet.latLng(0,0);
+
 const map = leaflet.map('map', {
   center: player.getLatLng(),
   zoom: zoom,
-  minZoom: zoom-100,
+  minZoom: zoom,
   maxZoom: zoom,
-  zoomControl: true,
-  scrollWheelZoom: true,
+  zoomControl: false,
+  scrollWheelZoom: false,
 });
+
 //add details to the map
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: zoom,
@@ -48,54 +51,46 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
 
-//add player top map
+//add player
 player.addTo(map);
 
-//Helper Functions
-function coordinateConversion(lat, long) {
-  const i = (NullIsland.lat + lat) * 15e+4;
-  const j =  (NullIsland.lng + long) * 15e+4;
-return  [Math.round(i), Math.round(j)];
-}
-
+let origin = player.getLatLng();
 
 //point display
 let points = 0;
 const pointPannel = document.querySelector<HTMLDivElement>("#pointPannel")!;
 pointPannel.style.fontSize = "50px";
-pointPannel.innerHTML = "0 coins accumulated";
+pointPannel.innerHTML = "0";
 
 
 //making the caches
 let caches: any[] = [];
 function generateCache(i: number, j: number){
-      if(luck([i,j].toString()) < spawnrate) {
-        let cache = spawnCache(i,j,caches);
+      if(luck([origin.lat+i,origin.lng+j].toString()) < spawnrate) {
+        let cache = spawnCache(i,j);
         caches.push(cache); 
       }
-  console.log(caches);
+  //console.log(caches);
   return caches
 }
 
 //creates cache and details
-function spawnCache(i, j, c){
-  const origin = NullIsland;
-
+function spawnCache(i, j){ 
   let coins = Math.floor((luck([i,j].toString()) * 8 + 2));
 
   const bounds = leaflet.latLngBounds([
-    [(origin.lat + i) * degrees, (origin.lng + j) * degrees],
-    [(origin.lat + (i + 0.75)) * degrees, (origin.lng + (j + 0.75)) * degrees],
+    [NullIsland.lat + origin.lat + i * degrees, NullIsland.lng + origin.lng + j * degrees],
+    [NullIsland.lat + origin.lat + (i + 0.75) * degrees, NullIsland.lng +origin.lng + (j + 0.75) * degrees],
   ]);
 
-  const cacheCoord = coordinateConversion(i, j);
+
   
   const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
 
   //cache popup
   let format = `
-  <div>This cache at "${cacheCoord[0]}, ${cacheCoord[1]}" contains <span id = "cacheCoins">${coins} </span> coins.</div>
+  <div>This cache at "${i},${j}" contains <span id = "cacheCoins">${coins} </span> coins.</div>
   <button id="take">Take</button>
   <button id="place">Deposit</button>
   `;
@@ -131,24 +126,23 @@ function spawnCache(i, j, c){
     return popup;
   })
 
+  console.log(rect.getBounds());
   return rect
 }
 
+
+
 for (let i = -area_size; i < area_size; i++) {
   for (let j = -area_size; j < area_size; j++) {
+    
     // If location i,j is lucky enough, spawn a cache!
-    if (luck([i, j].toString()) < spawnrate) {
-      let lat = player.getLatLng().lat + i;
-      let long = player.getLatLng().lng + j;
-      console.log(lat, " ", long, player.getLatLng(), "\n");
-      generateCache(lat, long);
+    origin = player.getLatLng();
+
+    if (luck([origin.lat+i, origin.lng+j].toString()) < spawnrate) {
+      generateCache(i, j);
     }
   }
 }
 
 //Set Center to a "player"
 //set origin to "player"
-
-console.log(player.getLatLng());
-
-

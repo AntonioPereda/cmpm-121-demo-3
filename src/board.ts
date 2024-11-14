@@ -4,10 +4,10 @@ import luck from "./luck.ts";
 interface Cell {
     readonly i: number;
     readonly j: number;
-    value: number;
-    ID: number;
-    //cache *id;
+    cache: leaflet.Rectangle; // this would be the "pointer"
 }
+
+const NullIsland = leaflet.latLng(0,0);
 
 export class Board {
 
@@ -28,6 +28,9 @@ export class Board {
         const { i, j } = cell;
         const key = [i, j].toString();
         // GET SINGLE CELL
+        if (!(key in this.knownCells)){
+            this.knownCells[key] = cell;
+        }
         
         return this.knownCells.get(key)!;
     }
@@ -35,30 +38,50 @@ export class Board {
 
 
     /*
-    i,j = [36.98949379578401, -122.06277128548504]
+    point = [36.98949379578401, -122.06277128548504]
     
     */
-    getCellForPoint(point: leaflet.LatLng): Cell {
-        return this.getCanonicalCell({ //feed ij + other cell stuff
-            
+    getCellForPoint(point: leaflet.LatLng, cacheRect: leaflet.Rectangle): Cell {
+        return this.getCanonicalCell({
+            i: point[0],
+            j: point[1],
+            cache: cacheRect
         });
     }
-// NULL ISLAND AS WELL
+
             
 
     getCellBounds(cell: Cell): leaflet.LatLngBounds {
     	// RETURN BOUNDS FOR CELL
-        /*
-        const bounds = leaflet.latLngBounds([
-        [origin.lat + i * degrees, origin.lng + j * degrees],
-        [origin.lat + (i + 0.75) * degrees, origin.lng + (j + 0.75) * degrees],
-        ]);*/
+        return cell.cache.getBounds();
     }
 
-    getCellsNearPoint(point: leaflet.LatLng): Cell[] {
+    getCellsNearPoint(point: leaflet.LatLng, cacheRect: leaflet.Rectangle): Cell[] {
         const resultCells: Cell[] = [];
-        const originCell = this.getCellForPoint(point);
+        const originCell = this.getCellForPoint(point, cacheRect);
         // NEIGHBORS
+        
+        // List of neighbor offsets
+        const neighborOffsets = [
+            { i: -1, j: -1 }, { i: -1, j: 0 }, { i: -1, j: 1 },
+            { i: 0, j: -1 },                { i: 0, j: 1 },
+            { i: 1, j: -1 }, { i: 1, j: 0 }, { i: 1, j: 1 }
+        ];
+
+        for (const offset of neighborOffsets) {
+            const neighborRow = originCell.i + offset.i;
+            const neighborColumn = originCell.j + offset.j;
+
+            // Check if the neighboring cell is within bounds
+            if (neighborRow >= 0 && neighborColumn >= 0) {
+
+                let bounds = leaflet.latLng(neighborRow, neighborColumn);
+                
+                const neighborCell: Cell = this.getCellForPoint(bounds, cacheRect);
+                resultCells.push(neighborCell);
+            }
+        }
+
         return resultCells;
     }
 }
