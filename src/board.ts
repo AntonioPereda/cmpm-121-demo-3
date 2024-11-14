@@ -4,10 +4,8 @@ import luck from "./luck.ts";
 interface Cell {
     readonly i: number;
     readonly j: number;
-    cache: leaflet.Rectangle; // this would be the "pointer"
+    cache: leaflet.Rectangle; // "pointer" to the cache object
 }
-
-const NullIsland = leaflet.latLng(0,0);
 
 export class Board {
 
@@ -43,8 +41,8 @@ export class Board {
     */
     getCellForPoint(point: leaflet.LatLng, cacheRect: leaflet.Rectangle): Cell {
         return this.getCanonicalCell({
-            i: point[0],
-            j: point[1],
+            i: point.lat,
+            j: point.lng,
             cache: cacheRect
         });
     }
@@ -69,16 +67,20 @@ export class Board {
         ];
 
         for (const offset of neighborOffsets) {
-            const neighborRow = originCell.i + offset.i;
-            const neighborColumn = originCell.j + offset.j;
 
-            // Check if the neighboring cell is within bounds
-            if (neighborRow >= 0 && neighborColumn >= 0) {
+            if (originCell != undefined){
 
-                let bounds = leaflet.latLng(neighborRow, neighborColumn);
-                
-                const neighborCell: Cell = this.getCellForPoint(bounds, cacheRect);
-                resultCells.push(neighborCell);
+                const neighborRow = originCell.i + offset.i;
+                const neighborColumn = originCell.j + offset.j;
+
+                // Check if the neighboring cell is within bounds
+                if (neighborRow >= 0 && neighborColumn >= 0) {
+
+                    let bounds = leaflet.latLng(neighborRow, neighborColumn);
+                    
+                    const neighborCell: Cell = this.getCellForPoint(bounds, cacheRect);
+                    resultCells.push(neighborCell);
+                }
             }
         }
 

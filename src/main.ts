@@ -14,6 +14,10 @@ import luck from "./luck.ts";
 //random seed
 import seedrandom from 'seedrandom';
 
+//import board
+
+import { Board } from "./board.ts";
+
 const seed_key = 'this is the seed value!';
 
 const random = seedrandom(seed_key);
@@ -62,21 +66,32 @@ const pointPannel = document.querySelector<HTMLDivElement>("#pointPannel")!;
 pointPannel.style.fontSize = "50px";
 pointPannel.innerHTML = "0";
 
+//coin info
+let pointBank: coinInfo[] = [];
+
+interface coinInfo {
+  i: number;
+  j: number;
+  serial: number;
+}
+
 
 //making the caches
 let caches: any[] = [];
+let B = new Board(0.75, 6);
 function generateCache(i: number, j: number){
       if(luck([origin.lat+i,origin.lng+j].toString()) < spawnrate) {
         let cache = spawnCache(i,j);
         caches.push(cache); 
+        B.getCellsNearPoint(leaflet.latLng(origin.lat+i,origin.lng+j), cache);
       }
-  //console.log(caches);
   return caches
 }
 
 //creates cache and details
 function spawnCache(i, j){ 
   let coins = Math.floor((luck([i,j].toString()) * 8 + 2));
+  let cacheBank: coinInfo[] = [];
 
   const bounds = leaflet.latLngBounds([
     [NullIsland.lat + origin.lat + i * degrees, NullIsland.lng + origin.lng + j * degrees],
@@ -88,12 +103,34 @@ function spawnCache(i, j){
   const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
 
-  //cache popup
+  let latitude = origin.lat + i;
+  let longitude = origin.lng + j;
+
+  let stdLat = Math.floor((latitude * degrees)*15e4);
+  let stdLong = Math.floor((longitude * degrees)*15e4);
+
+
+
+
+  //generate coin info
+  for (let c = 1; c <= coins; c++){
+
+    cacheBank.push({
+      i: stdLat,
+      j: stdLong,
+      serial: Math.floor( ((stdLat & stdLong) * coins) / c )
+    });
+
+  }
+
+
   let format = `
-  <div>This cache at "${i},${j}" contains <span id = "cacheCoins">${coins} </span> coins.</div>
+  <div>This cache at "${stdLat},${stdLong}" contains <span id = "cacheCoins">${coins} </span> coins.</div>
   <button id="take">Take</button>
   <button id="place">Deposit</button>
   `;
+  
+  //cache popup
   rect.bindPopup(()=>{
     const popup = document.createElement("div");
     popup.innerHTML = format;
@@ -105,6 +142,12 @@ function spawnCache(i, j){
       if (coins > 0){
         coins--;
         points++;
+
+        let particularCoin = cacheBank.pop();
+        pointBank.push(particularCoin);
+        //console.log(particularCoin);
+        //console.table(cacheBank);
+
         popup.querySelector<HTMLSpanElement>("#cacheCoins")!.innerHTML =
           coins.toString();
         pointPannel.innerHTML = `${points} coins accumulated`;
@@ -118,6 +161,12 @@ function spawnCache(i, j){
       if (points > 0){
         coins++;
         points--;
+
+        let particularCoin = pointBank.pop();
+        cacheBank.push(particularCoin);
+        //console.log(particularCoin);
+        //console.table(cacheBank);
+
         popup.querySelector<HTMLSpanElement>("#cacheCoins")!.innerHTML =
           coins.toString();
         pointPannel.innerHTML = `${points} coins accumulated`;
@@ -126,7 +175,6 @@ function spawnCache(i, j){
     return popup;
   })
 
-  console.log(rect.getBounds());
   return rect
 }
 
@@ -143,6 +191,3 @@ for (let i = -area_size; i < area_size; i++) {
     }
   }
 }
-
-//Set Center to a "player"
-//set origin to "player"
