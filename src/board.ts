@@ -28,9 +28,9 @@ export class Board {
         // GET SINGLE CELL
         if (!(key in this.knownCells)){
             this.knownCells[key] = cell;
-        }
-        
-        return this.knownCells.get(key)!;
+        }        
+        //console.log(this.knownCells[key]);
+        return this.knownCells[key]!;
     }
 
 
@@ -40,11 +40,16 @@ export class Board {
     
     */
     getCellForPoint(point: leaflet.LatLng, cacheRect: leaflet.Rectangle): Cell {
-        return this.getCanonicalCell({
+        
+        const retCell = this.getCanonicalCell({
             i: point.lat,
             j: point.lng,
             cache: cacheRect
         });
+
+        //console.log(retCell);
+
+        return retCell;
     }
 
             
@@ -57,33 +62,29 @@ export class Board {
     getCellsNearPoint(point: leaflet.LatLng, cacheRect: leaflet.Rectangle): Cell[] {
         const resultCells: Cell[] = [];
         const originCell = this.getCellForPoint(point, cacheRect);
-        // NEIGHBORS
-        
-        // List of neighbor offsets
-        const neighborOffsets = [
-            { i: -1, j: -1 }, { i: -1, j: 0 }, { i: -1, j: 1 },
-            { i: 0, j: -1 },                { i: 0, j: 1 },
-            { i: 1, j: -1 }, { i: 1, j: 0 }, { i: 1, j: 1 }
-        ];
 
-        for (const offset of neighborOffsets) {
-
-            if (originCell != undefined){
-
-                const neighborRow = originCell.i + offset.i;
-                const neighborColumn = originCell.j + offset.j;
-
+        //console.log(originCell);
+    
+        // Iterate over a square area defined by the tileVisibilityRadius
+        for (let iOffset = -this.tileVisibilityRadius; iOffset <= this.tileVisibilityRadius; iOffset++) {
+            for (let jOffset = -this.tileVisibilityRadius; jOffset <= this.tileVisibilityRadius; jOffset++) {
+                const neighborRow = originCell.i + iOffset;
+                const neighborColumn = originCell.j + jOffset;
+                
                 // Check if the neighboring cell is within bounds
                 if (neighborRow >= 0 && neighborColumn >= 0) {
-
-                    let bounds = leaflet.latLng(neighborRow, neighborColumn);
-                    
-                    const neighborCell: Cell = this.getCellForPoint(bounds, cacheRect);
-                    resultCells.push(neighborCell);
+                    const neighborLatLng = leaflet.latLng(neighborRow, neighborColumn);
+                    const neighborCell = this.getCellForPoint(neighborLatLng, cacheRect);
+    
+                    if (neighborCell) {
+                        resultCells.push(neighborCell);
+                        
+                    }
+                    console.log(neighborCell);
                 }
             }
         }
-
+    
         return resultCells;
     }
 }

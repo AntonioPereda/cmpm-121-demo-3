@@ -58,6 +58,9 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 //add player
 player.addTo(map);
 
+//Cache layer
+const cacheMarkers = leaflet.layerGroup().addTo(map);
+
 let origin = player.getLatLng();
 
 //point display
@@ -78,15 +81,63 @@ interface coinInfo {
 
 //making the caches
 let caches: any[] = [];
-let B = new Board(0.75, 6);
+let B = new Board(0.75, area_size);
 function generateCache(i: number, j: number){
+
+  console.log(caches);
+  cacheCopy.eachLayer(function(layer){
+    //console.log(checkPlayerDist(player, layer));
+  });
+
       if(luck([origin.lat+i,origin.lng+j].toString()) < spawnrate) {
         let cache = spawnCache(i,j);
         caches.push(cache); 
-        B.getCellsNearPoint(leaflet.latLng(origin.lat+i,origin.lng+j), cache);
+        
       }
-  return caches
+  return caches;
+
+      //NEW METHOD
+      /* 
+
+      For each layer, if new player location is within distance, push it to cacheMarkers
+
+      Only push to caches if it doesnt already exist
+
+      For each layer, check nearby. If it already exists and within range, push to cacheMarkers
+      
+      */
+
+
 }
+
+//Checks if A is within area_size of B
+function checkDist(markerA: leaflet.Rectangle, markerB:leaflet.Rectangle){
+
+
+
+}
+function checkPlayerDist(player: leaflet.marker, markerB:leaflet.Rectangle){
+
+  let playerLat = player.getLatLng().lat;
+  let playerLng = player.getLatLng().lng;
+
+  let bLat = markerB.getBounds()._northEast.lat;
+  let bLng = markerB.getBounds()._northEast.lng;
+
+  console.log(Math.abs(playerLat-bLat));
+
+  if (Math.abs(playerLat-bLat) <= area_size) {
+
+    if(Math.abs(playerLng - bLng) <= area_size){return true;}
+
+  }
+
+  return false;
+
+}
+
+
+
 
 //creates cache and details
 function spawnCache(i, j){ 
@@ -97,11 +148,12 @@ function spawnCache(i, j){
     [NullIsland.lat + origin.lat + i * degrees, NullIsland.lng + origin.lng + j * degrees],
     [NullIsland.lat + origin.lat + (i + 0.75) * degrees, NullIsland.lng +origin.lng + (j + 0.75) * degrees],
   ]);
+  
 
 
   
   const rect = leaflet.rectangle(bounds);
-  rect.addTo(map);
+  rect.addTo(cacheMarkers);
 
   let latitude = origin.lat + i;
   let longitude = origin.lng + j;
@@ -145,8 +197,6 @@ function spawnCache(i, j){
 
         let particularCoin = cacheBank.pop();
         pointBank.push(particularCoin);
-        //console.log(particularCoin);
-        //console.table(cacheBank);
 
         popup.querySelector<HTMLSpanElement>("#cacheCoins")!.innerHTML =
           coins.toString();
@@ -164,8 +214,6 @@ function spawnCache(i, j){
 
         let particularCoin = pointBank.pop();
         cacheBank.push(particularCoin);
-        //console.log(particularCoin);
-        //console.table(cacheBank);
 
         popup.querySelector<HTMLSpanElement>("#cacheCoins")!.innerHTML =
           coins.toString();
@@ -180,14 +228,72 @@ function spawnCache(i, j){
 
 
 
-for (let i = -area_size; i < area_size; i++) {
-  for (let j = -area_size; j < area_size; j++) {
-    
-    // If location i,j is lucky enough, spawn a cache!
-    origin = player.getLatLng();
 
-    if (luck([origin.lat+i, origin.lng+j].toString()) < spawnrate) {
-      generateCache(i, j);
+
+//Movement
+
+let movementScale = 0.00005;
+//let movementScale = 0.001;
+
+
+const moveUp = document.getElementById("up");
+const moveDown = document.getElementById("down");
+const moveLeft = document.getElementById("left");
+const moveRight = document.getElementById("right");
+
+moveUp.onclick = () =>{
+  let i = player.getLatLng().lat;
+  let j = player.getLatLng().lng;
+  player.setLatLng(leaflet.latLng(i+movementScale, j));
+  map.setView(player.getLatLng());
+  spawnTheCaches();
+}
+
+moveDown.onclick = () =>{
+  let i = player.getLatLng().lat;
+  let j = player.getLatLng().lng;
+  player.setLatLng(leaflet.latLng(i-movementScale, j));
+  map.setView(player.getLatLng());
+  spawnTheCaches();
+}
+
+moveLeft.onclick = () =>{
+  let i = player.getLatLng().lat;
+  let j = player.getLatLng().lng;
+  player.setLatLng(leaflet.latLng(i, j-movementScale));
+  map.setView(player.getLatLng());
+  spawnTheCaches();
+}
+
+moveRight.onclick = () =>{
+  let i = player.getLatLng().lat;
+  let j = player.getLatLng().lng;
+  player.setLatLng(leaflet.latLng(i, j+movementScale));
+  map.setView(player.getLatLng());
+  spawnTheCaches();
+}
+
+
+
+
+//Spawn new caches
+let cacheCopy;
+function spawnTheCaches(){
+  cacheCopy = cacheMarkers;
+
+  cacheMarkers.clearLayers();
+  for (let i = -area_size; i < area_size; i++) {
+    for (let j = -area_size; j < area_size; j++) {
+      
+      // If location i,j is lucky enough, spawn a cache!
+      origin = player.getLatLng();
+  
+      if (luck([origin.lat+i, origin.lng+j].toString()) < spawnrate) {
+        generateCache(i, j);
+      }
     }
   }
-}
+};
+
+spawnTheCaches();
+console.log(caches);
