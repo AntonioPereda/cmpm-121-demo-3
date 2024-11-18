@@ -25,7 +25,7 @@ const random = seedrandom(seed_key);
 //make the map
 let zoom = 19;
 let degrees = 1e-4;
-let area_size = 6;
+let area_size = 5;
 let spawnrate = 0.10;
 
 //Oakes Marker
@@ -80,20 +80,43 @@ interface coinInfo {
 
 
 //making the caches
-let caches: any[] = [];
+let caches: leaflet.Rectangle[] = [];
 let B = new Board(0.75, area_size);
 function generateCache(i: number, j: number){
+  //console.log("!!!");
+  //console.log(cacheCopy);
+  //console.log(cacheMarkers);
 
-  console.log(caches);
+  //console.log(caches);
+  //console.log("!!!!!!_____!!!!!!");
+  
   cacheCopy.eachLayer(function(layer){
-    //console.log(checkPlayerDist(player, layer));
+    
+    let found = caches.some(cacheID => cacheID._leaflet_id == layer._leaflet_id);
+
+    if (found){
+      let nearby = findNearby(layer);
+      console.log(nearby);
+
+      
+      for (let item of nearby){
+        if (item != undefined){
+          if(checkPlayerDist(player, item)){
+            item.addTo(cacheMarkers);
+          }
+        }
+      }
+    } 
+
   });
 
-      if(luck([origin.lat+i,origin.lng+j].toString()) < spawnrate) {
-        let cache = spawnCache(i,j);
-        caches.push(cache); 
-        
-      }
+  //console.log("making");
+  if(luck([origin.lat+i,origin.lng+j].toString()) < spawnrate) {
+    let cache = spawnCache(i,j);
+    caches.push(cache);   
+  }
+
+
   return caches;
 
       //NEW METHOD
@@ -110,24 +133,30 @@ function generateCache(i: number, j: number){
 
 }
 
-//Checks if A is within area_size of B
-function checkDist(markerA: leaflet.Rectangle, markerB:leaflet.Rectangle){
+//returns the nearby points of A
+function findNearby(markerA: leaflet.Rectangle){
 
+  let retCaches: leaflet.Rectangle = [];
 
+  let index = caches.findIndex((element) => markerA == element);
+
+  for (let i = index-5; i <= index+5; i++){
+    retCaches.push(caches[i]);
+  }
+
+  return retCaches;
 
 }
+//Checks if Player is within area_size of B
 function checkPlayerDist(player: leaflet.marker, markerB:leaflet.Rectangle){
 
-  let playerLat = player.getLatLng().lat;
-  let playerLng = player.getLatLng().lng;
+  let playerLat = (player.getLatLng().lat) * 15000;
+  let playerLng = (player.getLatLng().lng) * 15000;
 
-  let bLat = markerB.getBounds()._northEast.lat;
-  let bLng = markerB.getBounds()._northEast.lng;
-
-  console.log(Math.abs(playerLat-bLat));
+  let bLat = (markerB.getBounds()._northEast.lat) * 15000;
+  let bLng = (markerB.getBounds()._northEast.lng) * 15000;
 
   if (Math.abs(playerLat-bLat) <= area_size) {
-
     if(Math.abs(playerLng - bLng) <= area_size){return true;}
 
   }
@@ -146,7 +175,7 @@ function spawnCache(i, j){
 
   const bounds = leaflet.latLngBounds([
     [NullIsland.lat + origin.lat + i * degrees, NullIsland.lng + origin.lng + j * degrees],
-    [NullIsland.lat + origin.lat + (i + 0.75) * degrees, NullIsland.lng +origin.lng + (j + 0.75) * degrees],
+    [NullIsland.lat + origin.lat + (i + 0.45) * degrees, NullIsland.lng +origin.lng + (j + 0.55) * degrees],
   ]);
   
 
@@ -276,10 +305,18 @@ moveRight.onclick = () =>{
 
 
 
+// Function to clone a LayerGroup
+function cloneLayerGroup(layerGroup) {
+  const newLayerGroup = leaflet.layerGroup();
+  layerGroup.eachLayer(function(layer){layer.addTo(newLayerGroup)});
+
+  return newLayerGroup;
+}
+
 //Spawn new caches
 let cacheCopy;
 function spawnTheCaches(){
-  cacheCopy = cacheMarkers;
+  cacheCopy = cloneLayerGroup(cacheMarkers);
 
   cacheMarkers.clearLayers();
   for (let i = -area_size; i < area_size; i++) {
@@ -296,4 +333,3 @@ function spawnTheCaches(){
 };
 
 spawnTheCaches();
-console.log(caches);
