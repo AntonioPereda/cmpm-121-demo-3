@@ -18,6 +18,9 @@ import seedrandom from 'seedrandom';
 
 import { Board } from "./board.ts";
 
+//import memento
+import "./memento.ts"
+
 const seed_key = 'this is the seed value!';
 
 const random = seedrandom(seed_key);
