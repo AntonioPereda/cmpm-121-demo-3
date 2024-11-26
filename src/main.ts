@@ -28,7 +28,13 @@ const seed_key = 'this is the seed value!';
 
 const random = seedrandom(seed_key);
 
-
+interface CacheView {
+  rect: leaflet.Rectangle;
+  data: {
+      coins: number;
+      cacheBank: coinInfo[];
+  };
+}
 
 //make the map
 let zoom = 19;
@@ -94,9 +100,9 @@ interface coinInfo {
 
 function generateCache(i: number, j: number) {
   // Iterate over existing caches to find nearby and persist valid ones
+  console.log("generateCache is called");
   caches.forEach((cache) => {
     let nearby = findNearby(cache);
-    console.log(nearby);
 
     for (let item of nearby) {
       if (item != undefined && checkPlayerDist(player, item)) {
@@ -105,11 +111,10 @@ function generateCache(i: number, j: number) {
     }
   });
 
-  // Decide if you want to spawn a new cache at this location
-  if (luck([origin.lat + i, origin.lng + j].toString()) < spawnrate) {
-    let cache = spawnCache(i, j); // Create a new cache
-    caches.push(cache);          // Add to the caches array
-  }
+      let newCache = spawnCache(i, j);
+      attachPopup(newCache.rect, newCache.data);
+      caches.push(newCache.rect); 
+
 
   return caches;
 }
@@ -129,17 +134,20 @@ function findNearby(markerA: leaflet.Rectangle) {
     const cache = caches[i];
     if (cache) retCaches.push(cache); // Validate cache existence
   }
-
-  return retCaches;
+  return retCaches.flat();
 }
 
 //Checks if Player is within area_size of B
 function checkPlayerDist(player: leaflet.Marker, cache: leaflet.Rectangle) {
+  if (Array.isArray(cache)){
+    return;
+  }
   const playerLat = player.getLatLng().lat;
   const playerLng = player.getLatLng().lng;
 
+  //console.log(cache);
+
   // Use .getBounds() then .getNorthEast() to retrieve the NE corner
-  console.log(cache);
   const cacheLat = cache.getBounds().getNorthEast().lat;
   const cacheLng = cache.getBounds().getNorthEast().lng;
 
@@ -151,7 +159,7 @@ function checkPlayerDist(player: leaflet.Marker, cache: leaflet.Rectangle) {
 }
 
 
-function spawnCache(i, j) { 
+function spawnCache(i, j): CacheView { 
   const cacheBank: coinInfo[] = [];
   const coins = Math.floor((luck([i, j].toString()) * 8 + 2));
 
@@ -161,24 +169,27 @@ function spawnCache(i, j) {
       [NullIsland.lat + origin.lat + (i + 0.45) * degrees, NullIsland.lng + origin.lng + (j + 0.55) * degrees]
   ]);
 
+
+  const data = {
+    coordinates: bounds,
+    coins: coins,
+    cacheBank: [],
+  };
+
   // Create rectangle marker
   const rect = leaflet.rectangle(bounds);
   rect.addTo(cacheMarkers);
 
   // Generate cache-related data
-  const data = {
-      coordinates: bounds,
-      coins: coins,
-      cacheBank: [],
-  };
 
   // Return cache data and the marker to be processed separately
-  return { rect, data };
+  return {rect, data};
 }
 
-// attaches popup to market
+
+
+// attaches popup to cache
 function attachPopup(rect: leaflet.Rectangle, data) {
-  // Create popup HTML
   const popupDiv = document.createElement("div");
   popupDiv.innerHTML = `
       <div>This cache contains <span id="cacheCoins">${data.coins}</span> coins.</div>
@@ -192,7 +203,6 @@ function attachPopup(rect: leaflet.Rectangle, data) {
   popupDiv.querySelector<HTMLButtonElement>("#place")!.style.color = "white";
   const coinCounter = popupDiv.querySelector("#cacheCoins")!;
 
-  // Logic for handling "Take" button
   takeButton.addEventListener("click", () => {
       if (data.coins > 0) {
           data.coins--;
@@ -204,7 +214,6 @@ function attachPopup(rect: leaflet.Rectangle, data) {
       }
   });
 
-  // Logic for handling "Deposit" button
   depositButton.addEventListener("click", () => {
       if (points > 0) {
           points--;
@@ -281,32 +290,59 @@ function cloneLayerGroup(layerGroup) {
 //Spawn new caches
 function spawnTheCaches() {
   const newOrigin = player.getLatLng();
-  const cachesToKeep: leaflet.Rectangle[] = []; // Track which caches stay in the range
+  let cachesToKeep: leaflet.Rectangle[] = []; // Track which caches stay in the range
+  //console.log("Initial cachesToKeep:", cachesToKeep);
 
   // Loop over existing caches and determine if they should stay in range
   caches.forEach((cache) => {
-    if (checkPlayerDist(player, cache)) {
-      cache.addTo(cacheMarkers); // Add back to visible layer
-      cachesToKeep.push(cache); // Keep this cache
+    //console.log("Processing cache:", cache);
+
+    // Keep only valid rectangles that are still in range
+    if (checkPlayerDist(player, cache) && cache instanceof leaflet.Rectangle) {
+      cache.addTo(cacheMarkers); // Add valid cache back to the visible layer group
+      cachesToKeep.push(cache); // Add it to the list of caches to preserve
+    } else {
+      //console.warn("Unexpected or invalid cache detected:", cache);
     }
   });
+  //console.log("CachesToKeep after filtering:", cachesToKeep);
 
-  // Update origin to the player's new location
+  // Ensure only flat and valid rectangles are reassigned to caches
+  caches = cachesToKeep.flat().filter((item) => item instanceof leaflet.Rectangle);
+  //console.log("Caches after sanitizing:", caches);
+
+  // Update the player's location
   origin = newOrigin;
 
-  // Remove old caches from array that are out of range
-  caches = cachesToKeep;
-
-  // Spawn new caches in the vicinity
+  // Spawn new caches in the vicinity using `generateCache`
   for (let i = -area_size; i < area_size; i++) {
     for (let j = -area_size; j < area_size; j++) {
       const pos = [origin.lat + i * degrees, origin.lng + j * degrees];
+      //console.log("Calculating spawn for pos:", pos);
+
+      // Use `luck` to determine if a new cache should spawn
       if (luck(pos.toString()) < spawnrate) {
-        const newCache = generateCache(i, j);
-        if (newCache) caches.push(newCache);
+        //console.log("Spawning cache at:", i, j);
+        const generatedCaches = generateCache(i, j);
+        //console.log("Generated caches at (i, j):", i, j, " -> ", generatedCaches);
+
+        if (generatedCaches && Array.isArray(generatedCaches)) {
+          generatedCaches.forEach((cache) => {
+            if (cache instanceof leaflet.Rectangle) {
+              caches.push(cache); // Add only valid rectangles to the master list
+              //console.log("Cache added:", cache);
+            } else {
+              //console.error("Invalid cache structure from generateCache:", cache);
+            }
+          });
+        } else {
+          //console.warn("generateCache returned invalid or empty data:", generatedCaches);
+        }
       }
     }
   }
+
+  //console.log("Final state of caches after spawning new ones:", caches);
 }
 
 spawnTheCaches();
@@ -315,15 +351,3 @@ spawnTheCaches();
 const originator = new CacheOriginator();
 const caretaker = new Caretaker();
 
-// Save state
-originator.setState(caches.map(cache => ({
-    id: cache._leaflet_id,
-    val: 1, // Example placeholder for coin count
-    lat: cache.getBounds().getNorthEast().lat,
-    lng: cache.getBounds().getNorthEast().lng,
-})));
-caretaker.add(originator.saveStateToMemento());
-
-// Restore state
-originator.getStateFromMemento(caretaker.get(0));
-const restoredState = originator.getState();
