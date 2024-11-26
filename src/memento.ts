@@ -1,4 +1,4 @@
-export class Memento {
+class Memento {
     private state: CacheState[];
 
     constructor(state: CacheState[]) {
@@ -17,35 +17,23 @@ interface CacheState {
     lng: number;
 }
 
-export class CacheOriginator {
-    private caches: CacheState[] = []; // Holds the current state.
+class CacheOriginator {
+    private caches: CacheState[] = [];
 
-    constructor(){
-        this.caches = [];
-    }
-
-    // Set the current state
     setState(state: CacheState[]): void {
         this.caches = state;
     }
 
-    // Save the current state to a Memento object
     saveStateToMemento(): Memento {
         return new Memento(this.caches);
     }
 
-    // Restore the state from a Memento object
     getStateFromMemento(memento: Memento): void {
         this.caches = memento.getState();
     }
-
-    // Add this method to retrieve the current state
-    getState(): CacheState[] {
-        return this.caches;
-    }
 }
 
-export class Caretaker {
+class Caretaker {
     private mementoList: Memento[] = [];
 
     add(memento: Memento): void {
