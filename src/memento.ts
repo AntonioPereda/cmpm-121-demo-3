@@ -17,7 +17,7 @@ interface CacheState {
     lng: number;
 }
 
-class CacheOriginator {
+export class CacheOriginator {
     private caches: CacheState[] = [];
 
     setState(state: CacheState[]): void {
@@ -33,7 +33,7 @@ class CacheOriginator {
     }
 }
 
-class Caretaker {
+export class Caretaker {
     private mementoList: Memento[] = [];
 
     add(memento: Memento): void {

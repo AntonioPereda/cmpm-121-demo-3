@@ -40,7 +40,7 @@ interface CacheView {
 let zoom = 19;
 let degrees = 1e-4;
 let area_size = 5;
-let spawnrate = 0.10;
+let spawnrate = 0.07;
 
 //making the caches
 let caches: leaflet.Rectangle[] = [];
@@ -61,10 +61,10 @@ const NullIsland = leaflet.latLng(0,0);
 const map = leaflet.map('map', {
   center: player.getLatLng(),
   zoom: zoom,
-  minZoom: zoom,
+  minZoom: zoom-100,
   maxZoom: zoom,
-  zoomControl: false,
-  scrollWheelZoom: false,
+  zoomControl: true,
+  scrollWheelZoom: true,
 });
 
 //add details to the map
@@ -98,25 +98,29 @@ interface coinInfo {
 }
 
 
-function generateCache(i: number, j: number) {
-  // Iterate over existing caches to find nearby and persist valid ones
-  console.log("generateCache is called");
-  caches.forEach((cache) => {
-    let nearby = findNearby(cache);
+function generateCache(i: number, j: number): void {
+  //console.log(`Attempting to generate cache at tile offset (${i}, ${j})`);
 
-    for (let item of nearby) {
-      if (item != undefined && checkPlayerDist(player, item)) {
-        item.addTo(cacheMarkers); // Keep existing caches within player's range
-      }
-    }
-  });
+  // Get the tile at the grid position
+  const tile = B.getCellForPoint(
+      leaflet.latLng(origin.lat + i * degrees, origin.lng + j * degrees)
+  );
 
-      let newCache = spawnCache(i, j);
-      attachPopup(newCache.rect, newCache.data);
-      caches.push(newCache.rect); 
+  // Spawn cache if tile is unoccupied
+  if (tile && !tile.isOccupied) {
+      //console.log(`Spawning unoccupied @ (${tile.i}, ${tile.j})`);
+      const cache = spawnCache(i, j); // Create cache
 
+      cache.rect.addTo(cacheMarkers);
 
-  return caches;
+      // Mark as occupied, track it & add it
+      tile.isOccupied = true;
+      caches.push(cache.rect);
+      attachPopup(cache.rect, cache.data);
+      console.log(`Cache spawned @ (${tile.i}, ${tile.j}). Marked as occupied.`);
+  } else {
+      console.log(`Cant spawn cache: Tile (${i}, ${j}) is already occupied.`);
+  }
 }
 
 //returns the nearby points of A
@@ -289,65 +293,47 @@ function cloneLayerGroup(layerGroup) {
 
 //Spawn new caches
 function spawnTheCaches() {
+  //ALIGNS WITH THE PLAYER
+  const OFFSET1 = 36.7
+  const OFFSET2 = 122;
+
+  
+  //console.log("Spawning caches...");
   const newOrigin = player.getLatLng();
-  let cachesToKeep: leaflet.Rectangle[] = []; // Track which caches stay in the range
-  //console.log("Initial cachesToKeep:", cachesToKeep);
 
-  // Loop over existing caches and determine if they should stay in range
+  const cachesToKeep: leaflet.Rectangle[] = [];
   caches.forEach((cache) => {
-    //console.log("Processing cache:", cache);
-
-    // Keep only valid rectangles that are still in range
-    if (checkPlayerDist(player, cache) && cache instanceof leaflet.Rectangle) {
-      cache.addTo(cacheMarkers); // Add valid cache back to the visible layer group
-      cachesToKeep.push(cache); // Add it to the list of caches to preserve
-    } else {
-      //console.warn("Unexpected or invalid cache detected:", cache);
-    }
-  });
-  //console.log("CachesToKeep after filtering:", cachesToKeep);
-
-  // Ensure only flat and valid rectangles are reassigned to caches
-  caches = cachesToKeep.flat().filter((item) => item instanceof leaflet.Rectangle);
-  //console.log("Caches after sanitizing:", caches);
-
-  // Update the player's location
-  origin = newOrigin;
-
-  // Spawn new caches in the vicinity using `generateCache`
-  for (let i = -area_size; i < area_size; i++) {
-    for (let j = -area_size; j < area_size; j++) {
-      const pos = [origin.lat + i * degrees, origin.lng + j * degrees];
-      //console.log("Calculating spawn for pos:", pos);
-
-      // Use `luck` to determine if a new cache should spawn
-      if (luck(pos.toString()) < spawnrate) {
-        //console.log("Spawning cache at:", i, j);
-        const generatedCaches = generateCache(i, j);
-        //console.log("Generated caches at (i, j):", i, j, " -> ", generatedCaches);
-
-        if (generatedCaches && Array.isArray(generatedCaches)) {
-          generatedCaches.forEach((cache) => {
-            if (cache instanceof leaflet.Rectangle) {
-              caches.push(cache); // Add only valid rectangles to the master list
-              //console.log("Cache added:", cache);
-            } else {
-              //console.error("Invalid cache structure from generateCache:", cache);
-            }
-          });
-        } else {
-          //console.warn("generateCache returned invalid or empty data:", generatedCaches);
-        }
+      if (checkPlayerDist(player, cache)) {
+          //console.log("Keeping cache within range");
+          cache.addTo(cacheMarkers);
+          cachesToKeep.push(cache);
+      } else {
+          console.log("Removing out-of-range cache");
+          const tile = B.getCellForPoint(cache.getBounds().getCenter());
+          if (tile) tile.isOccupied = false;
       }
+  });
+
+  caches = cachesToKeep;
+  const originLat = newOrigin.lat;
+  const originLng = newOrigin.lng;
+
+  for (let i = -area_size; i <= area_size; i++) {
+    for (let j = -area_size; j <= area_size; j++) {
+        // Convert grid offsets (i, j) to world coordinates
+        const targetLat = origin.lat + i * B.tileWidth;
+        const targetLng = origin.lng + j * B.tileWidth;
+
+        // Check spawnrate and generate cache
+        if (luck([targetLat, targetLng].toString()) < spawnrate) {
+            generateCache(targetLat-OFFSET1, targetLng+OFFSET2);
+        }
     }
   }
-
-  //console.log("Final state of caches after spawning new ones:", caches);
+  console.log(player.getLatLng());
 }
 
 spawnTheCaches();
-
-
 const originator = new CacheOriginator();
 const caretaker = new Caretaker();
 
