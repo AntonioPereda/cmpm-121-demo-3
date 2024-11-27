@@ -95,3 +95,32 @@ export class Board {
         return resultCells;
     }
 }
+
+export class CacheManager {
+    private caches: leaflet.Rectangle[] = []; // Track cache objects
+
+    // Add a cache and return its reference
+    addCache(bounds: leaflet.LatLngBounds): leaflet.Rectangle {
+        const cache = leaflet.rectangle(bounds);
+        this.caches.push(cache);
+        return cache;
+    }
+
+    // Check for nearby caches
+    getNearbyCaches(center: leaflet.LatLng, radius: number): leaflet.Rectangle[] {
+        return this.caches.filter(cache => {
+            const distance = cache.getBounds().contains(center);
+            return distance <= radius;
+        });
+    }
+
+    // Save cache state to integrate with Memento
+    saveState(): CacheState[] {
+        return this.caches.map(cache => ({
+            id: cache._leaflet_id,
+            val: 1, // Update with real logic
+            lat: cache.getBounds().getNorthEast().lat,
+            lng: cache.getBounds().getNorthEast().lng,
+        }));
+    }
+}
