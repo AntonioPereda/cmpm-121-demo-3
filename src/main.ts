@@ -49,6 +49,7 @@ let caches: leaflet.Rectangle[] = [];
 let globalCache: leaflet.Rectangle[] = [];
 let B = new Board(1, area_size);
 let cacheManager = new CacheManager();
+let polyHist: any = [];
 
 let prevLatLng;
 
@@ -87,6 +88,8 @@ player.addTo(map);
 const cacheMarkers = leaflet.layerGroup().addTo(map);
 
 let origin = player.getLatLng();
+
+let polyline = leaflet.polyline(polyHist, {color: 'red'}).addTo(map);
 
 //point display
 let points = 0;
@@ -302,12 +305,22 @@ let lastLat = null;
 let lastLng = null;
 const AREA = 1.35;
 function updatePlayerLocation(lat, lng) {
+
+    //polyline stuff
+
+   // console.log(origin.lat, origin.lng);
+
     if (isGeolocationEnabled){
       console.log(lat, lng);
       player.setLatLng(leaflet.latLng(lat, lng));
     }
     origin = player.getLatLng();
     map.setView(origin, map.getZoom());
+    polyHist.push(leaflet.latLng(origin.lat, origin.lng))
+    map.removeLayer(polyline);
+    polyline = new leaflet.polyline(polyHist, {color: 'red'}).addTo(map);
+    console.log(polyHist);
+    polyline.redraw();
 }
 
 
@@ -398,6 +411,7 @@ function stopGeolocation() {
 const geoButton = document.getElementById("sensor");
 let isGeolocationEnabled = false;
   geoButton.onclick = () =>{
+    polyHist = [];
     if (isGeolocationEnabled) {
       stopGeolocation(); // Stop tracking
     } else {
