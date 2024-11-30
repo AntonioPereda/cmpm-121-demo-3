@@ -44,8 +44,11 @@ let spawnrate = 0.07;
 
 //making the caches
 let caches: leaflet.Rectangle[] = [];
-let B = new Board(0.75, area_size);
+let globalCache: leaflet.Rectangle[] = [];
+let B = new Board(1, area_size);
 let cacheManager = new CacheManager();
+
+let prevLatLng;
 
 //Oakes Marker
 const Oakes_Class = leaflet.latLng(36.98949379578401, -122.06277128548504);
@@ -106,6 +109,9 @@ function generateCache(i: number, j: number): void {
       leaflet.latLng(origin.lat + i * degrees, origin.lng + j * degrees)
   );
 
+  console.log(i, " vs ", tile.j);
+  console.log(tile.isOccupied);
+
   // Spawn cache if tile is unoccupied
   if (tile && !tile.isOccupied) {
       //console.log(`Spawning unoccupied @ (${tile.i}, ${tile.j})`);
@@ -116,6 +122,7 @@ function generateCache(i: number, j: number): void {
       // Mark as occupied, track it & add it
       tile.isOccupied = true;
       caches.push(cache.rect);
+      globalCache.push(cache.rect);
       attachPopup(cache.rect, cache.data);
       console.log(`Cache spawned @ (${tile.i}, ${tile.j}). Marked as occupied.`);
   } else {
@@ -251,6 +258,7 @@ const moveRight = document.getElementById("right");
 moveUp.onclick = () =>{
   let i = player.getLatLng().lat;
   let j = player.getLatLng().lng;
+  prevLatLng = leaflet.latLng(i,j);
   player.setLatLng(leaflet.latLng(i+movementScale, j));
   map.setView(player.getLatLng());
   spawnTheCaches();
@@ -259,6 +267,7 @@ moveUp.onclick = () =>{
 moveDown.onclick = () =>{
   let i = player.getLatLng().lat;
   let j = player.getLatLng().lng;
+  prevLatLng = leaflet.latLng(i,j);
   player.setLatLng(leaflet.latLng(i-movementScale, j));
   map.setView(player.getLatLng());
   spawnTheCaches();
@@ -267,6 +276,7 @@ moveDown.onclick = () =>{
 moveLeft.onclick = () =>{
   let i = player.getLatLng().lat;
   let j = player.getLatLng().lng;
+  prevLatLng = leaflet.latLng(i,j);
   player.setLatLng(leaflet.latLng(i, j-movementScale));
   map.setView(player.getLatLng());
   spawnTheCaches();
@@ -297,14 +307,15 @@ function spawnTheCaches() {
   const OFFSET1 = 36.7
   const OFFSET2 = 122;
 
+  cacheMarkers.clearLayers();
+
   
   //console.log("Spawning caches...");
-  const newOrigin = player.getLatLng();
+  origin = player.getLatLng();
 
   const cachesToKeep: leaflet.Rectangle[] = [];
-  caches.forEach((cache) => {
+  globalCache.forEach((cache) => {
       if (checkPlayerDist(player, cache)) {
-          //console.log("Keeping cache within range");
           cache.addTo(cacheMarkers);
           cachesToKeep.push(cache);
       } else {
@@ -315,18 +326,18 @@ function spawnTheCaches() {
   });
 
   caches = cachesToKeep;
-  const originLat = newOrigin.lat;
-  const originLng = newOrigin.lng;
+  const originLat = origin.lat;
+  const originLng = origin.lng;
 
   for (let i = -area_size; i <= area_size; i++) {
     for (let j = -area_size; j <= area_size; j++) {
         // Convert grid offsets (i, j) to world coordinates
-        const targetLat = origin.lat + i * B.tileWidth;
-        const targetLng = origin.lng + j * B.tileWidth;
+        const targetLat = originLat + i;
+        const targetLng = originLng + j;
 
         // Check spawnrate and generate cache
         if (luck([targetLat, targetLng].toString()) < spawnrate) {
-            generateCache(targetLat-OFFSET1, targetLng+OFFSET2);
+            generateCache((targetLat-OFFSET1) * B.tileWidth, (targetLng+OFFSET2) * B.tileWidth);
         }
     }
   }
