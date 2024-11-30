@@ -28,6 +28,8 @@ const seed_key = 'this is the seed value!';
 
 const random = seedrandom(seed_key);
 
+let watchId: any = null;
+
 interface CacheView {
   rect: leaflet.Rectangle;
   data: {
@@ -70,6 +72,7 @@ const map = leaflet.map('map', {
   scrollWheelZoom: true,
 });
 
+
 //add details to the map
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: zoom,
@@ -109,8 +112,8 @@ function generateCache(i: number, j: number): void {
       leaflet.latLng(origin.lat + i * degrees, origin.lng + j * degrees)
   );
 
-  console.log(i, " vs ", tile.j);
-  console.log(tile.isOccupied);
+  //console.log(i, " vs ", tile.j);
+  //console.log(tile.isOccupied);
 
   // Spawn cache if tile is unoccupied
   if (tile && !tile.isOccupied) {
@@ -124,9 +127,9 @@ function generateCache(i: number, j: number): void {
       caches.push(cache.rect);
       globalCache.push(cache.rect);
       attachPopup(cache.rect, cache.data);
-      console.log(`Cache spawned @ (${tile.i}, ${tile.j}). Marked as occupied.`);
+      //(`Cache spawned @ (${tile.i}, ${tile.j}). Marked as occupied.`);
   } else {
-      console.log(`Cant spawn cache: Tile (${i}, ${j}) is already occupied.`);
+      //console.log(`Cant spawn cache: Tile (${i}, ${j}) is already occupied.`);
   }
 }
 
@@ -246,6 +249,7 @@ function attachPopup(rect: leaflet.Rectangle, data) {
 
 //Movement
 
+//let movementScale = 0.0000005;
 let movementScale = 0.00005;
 //let movementScale = 0.001;
 
@@ -293,13 +297,19 @@ moveRight.onclick = () =>{
 
 
 
-// Function to clone a LayerGroup
-function cloneLayerGroup(layerGroup) {
-  const newLayerGroup = leaflet.layerGroup();
-  layerGroup.eachLayer(function(layer){layer.addTo(newLayerGroup)});
-
-  return newLayerGroup;
+//update player location
+let lastLat = null;
+let lastLng = null;
+const AREA = 1.35;
+function updatePlayerLocation(lat, lng) {
+    if (isGeolocationEnabled){
+      console.log(lat, lng);
+      player.setLatLng(leaflet.latLng(lat, lng));
+    }
+    origin = player.getLatLng();
+    map.setView(origin, map.getZoom());
 }
+
 
 //Spawn new caches
 function spawnTheCaches() {
@@ -309,17 +319,15 @@ function spawnTheCaches() {
 
   cacheMarkers.clearLayers();
 
-  
-  //console.log("Spawning caches...");
-  origin = player.getLatLng();
+  updatePlayerLocation(origin.lat, origin.lng);
 
   const cachesToKeep: leaflet.Rectangle[] = [];
-  globalCache.forEach((cache) => {
+  caches.forEach((cache) => {
       if (checkPlayerDist(player, cache)) {
           cache.addTo(cacheMarkers);
           cachesToKeep.push(cache);
       } else {
-          console.log("Removing out-of-range cache");
+          //console.log("Removing out-of-range cache");
           const tile = B.getCellForPoint(cache.getBounds().getCenter());
           if (tile) tile.isOccupied = false;
       }
@@ -341,10 +349,66 @@ function spawnTheCaches() {
         }
     }
   }
-  console.log(player.getLatLng());
+  //console.log(player.getLatLng());
 }
 
+
+//Geolocation stuff
+
+// Start geolocation tracking
+function startGeolocation() {
+  if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+  }
+
+  console.log('Starting geolocation...');
+  watchId = navigator.geolocation.watchPosition(
+      (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log(`User Location: ${latitude}, ${longitude}`);
+
+          // Update player's location on the map
+          updatePlayerLocation(latitude, longitude);
+          console.log(`New Location: ${latitude}, ${longitude}`);
+
+
+          //spawn caches based on location
+          spawnTheCaches();
+      },
+      (error) => {
+          console.error(`Geolocation error: ${error.message}`);
+      },
+      {
+          enableHighAccuracy: true, // Get accurate location from GPS
+          maximumAge: 0,           // Dont use cached positions
+      }
+  );
+}
+
+// Stop geolocation tracking
+function stopGeolocation() {
+  if (watchId !== null) {
+      console.log('Stopping geolocation...');
+      navigator.geolocation.clearWatch(watchId); // Stops the watcher
+      watchId = null; // Reset watch ID to indicate no active tracking
+  }
+}
+
+const geoButton = document.getElementById("sensor");
+let isGeolocationEnabled = false;
+  geoButton.onclick = () =>{
+    if (isGeolocationEnabled) {
+      stopGeolocation(); // Stop tracking
+    } else {
+      startGeolocation(); // Start tracking
+  }
+  isGeolocationEnabled = !isGeolocationEnabled;
+}
+
+
+
+
+
 spawnTheCaches();
-const originator = new CacheOriginator();
-const caretaker = new Caretaker();
 
