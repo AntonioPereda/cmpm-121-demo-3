@@ -22,6 +22,9 @@ import { Board, CacheManager } from "./board.ts";
 import "./memento.ts"
 import { CacheOriginator, Caretaker } from "./memento.ts";
 
+//import UIManager
+import { UIManager } from "./UIManager";
+
 
 
 const seed_key = 'this is the seed value!';
@@ -249,53 +252,57 @@ function attachPopup(rect: leaflet.Rectangle, data) {
 
 
 
+//UI Manager
+const uiManager = new UIManager(() => {
+  isGeolocationEnabled = !isGeolocationEnabled;
+  if (isGeolocationEnabled) {
+    startGeolocation();
+    polyHist = [];
+  } else {
+    stopGeolocation();
+  }
+});
 
 //Movement
 
-//let movementScale = 0.0000005;
 let movementScale = 0.00005;
 //let movementScale = 0.001;
 
+uiManager.setMovementHandlers({
+  up: () => {
+    const i = player.getLatLng().lat;
+    const j = player.getLatLng().lng;
+    prevLatLng = leaflet.latLng(i, j);
+    player.setLatLng(leaflet.latLng(i + movementScale, j));
+    map.setView(player.getLatLng());
+    spawnTheCaches();
+  },
+  down: () => {
+    const i = player.getLatLng().lat;
+    const j = player.getLatLng().lng;
+    prevLatLng = leaflet.latLng(i, j);
+    player.setLatLng(leaflet.latLng(i - movementScale, j));
+    map.setView(player.getLatLng());
+    spawnTheCaches();
+  },
+  left: () => {
+    const i = player.getLatLng().lat;
+    const j = player.getLatLng().lng;
+    prevLatLng = leaflet.latLng(i, j);
+    player.setLatLng(leaflet.latLng(i, j - movementScale));
+    map.setView(player.getLatLng());
+    spawnTheCaches();
+  },
+  right: () => {
+    const i = player.getLatLng().lat;
+    const j = player.getLatLng().lng;
+    prevLatLng = leaflet.latLng(i, j);
+    player.setLatLng(leaflet.latLng(i, j + movementScale));
+    map.setView(player.getLatLng());
+    spawnTheCaches();
+  }
+});
 
-const moveUp = document.getElementById("up");
-const moveDown = document.getElementById("down");
-const moveLeft = document.getElementById("left");
-const moveRight = document.getElementById("right");
-
-moveUp.onclick = () =>{
-  let i = player.getLatLng().lat;
-  let j = player.getLatLng().lng;
-  prevLatLng = leaflet.latLng(i,j);
-  player.setLatLng(leaflet.latLng(i+movementScale, j));
-  map.setView(player.getLatLng());
-  spawnTheCaches();
-}
-
-moveDown.onclick = () =>{
-  let i = player.getLatLng().lat;
-  let j = player.getLatLng().lng;
-  prevLatLng = leaflet.latLng(i,j);
-  player.setLatLng(leaflet.latLng(i-movementScale, j));
-  map.setView(player.getLatLng());
-  spawnTheCaches();
-}
-
-moveLeft.onclick = () =>{
-  let i = player.getLatLng().lat;
-  let j = player.getLatLng().lng;
-  prevLatLng = leaflet.latLng(i,j);
-  player.setLatLng(leaflet.latLng(i, j-movementScale));
-  map.setView(player.getLatLng());
-  spawnTheCaches();
-}
-
-moveRight.onclick = () =>{
-  let i = player.getLatLng().lat;
-  let j = player.getLatLng().lng;
-  player.setLatLng(leaflet.latLng(i, j+movementScale));
-  map.setView(player.getLatLng());
-  spawnTheCaches();
-}
 
 
 
@@ -410,19 +417,10 @@ function stopGeolocation() {
 
 const geoButton = document.getElementById("sensor");
 let isGeolocationEnabled = false;
-  geoButton.onclick = () =>{
-    polyHist = [];
-    if (isGeolocationEnabled) {
-      stopGeolocation(); // Stop tracking
-    } else {
-      startGeolocation(); // Start tracking
-  }
-  isGeolocationEnabled = !isGeolocationEnabled;
-}
-
 
 
 
 
 spawnTheCaches();
+uiManager.bindGeolocationToggle();
 
